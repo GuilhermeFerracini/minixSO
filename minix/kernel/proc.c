@@ -1796,7 +1796,7 @@ static struct proc * pick_proc(void) {
     for (q = 0; q < NR_SCHED_QUEUES; q++) {
         int count = 0;
         struct proc *iter;
-        for (iter = rdy_head[q]; iter != NULL; iter = iter->p_nextready) { // Substitua p_readyq
+        for (iter = rdy_head[q]; iter != NULL; iter = iter->p_nextready) { 
             count++;
         }
         total_tickets += count * (NR_SCHED_QUEUES - q);
