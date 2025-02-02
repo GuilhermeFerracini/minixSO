@@ -1782,9 +1782,9 @@ void dequeue(struct proc *rp)
 /*===========================================================================*
  *				pick_proc				     * 
  *===========================================================================*/
-
 // Escalonador por loteria
 static struct proc * pick_proc(void) {
+
     register struct proc *rp = NULL;
     struct proc **rdy_head;
     int q;
@@ -1796,7 +1796,7 @@ static struct proc * pick_proc(void) {
     for (q = 0; q < NR_SCHED_QUEUES; q++) {
         int count = 0;
         struct proc *iter;
-        for (iter = rdy_head[q]; iter != NULL; iter = iter->p_readyq) {
+        for (iter = rdy_head[q]; iter != NULL; iter = iter->p_nextready) { // Substitua p_readyq
             count++;
         }
         total_tickets += count * (NR_SCHED_QUEUES - q);
@@ -1804,11 +1804,9 @@ static struct proc * pick_proc(void) {
 
     // 2. Fallback se não houver tickets
     if (total_tickets == 0) {
-        // Tenta buscar o processo ocioso na última fila
         rp = rdy_head[NR_SCHED_QUEUES - 1];
         if (rp == NULL) {
-            // Fallback explícito para o processo ocioso
-            rp = get_cpulocal_var(idle_proc);
+            rp = &get_cpulocal_var(idle_proc); 
         }
     } else {
         // 3. Sortear bilhete
@@ -1816,7 +1814,7 @@ static struct proc * pick_proc(void) {
         for (q = 0; q < NR_SCHED_QUEUES; q++) {
             int count = 0;
             struct proc *iter;
-            for (iter = rdy_head[q]; iter != NULL; iter = iter->p_readyq) { 
+            for (iter = rdy_head[q]; iter != NULL; iter = iter->p_nextready) { 
                 count++;
             }
             int weight = NR_SCHED_QUEUES - q;
@@ -1825,7 +1823,7 @@ static struct proc * pick_proc(void) {
                 int index = (ticket - 1) / weight;
                 rp = rdy_head[q];
                 for (int i = 0; i < index && rp != NULL; i++) {
-                    rp = rp->p_readyq; 
+                    rp = rp->p_nextready;
                 }
                 break;
             } else {
@@ -1834,15 +1832,14 @@ static struct proc * pick_proc(void) {
         }
     }
 
-    // 5. Verificar processo válido
+    // 5. Fallback final para o processo ocioso
     if (rp != NULL) {
         assert(proc_is_runnable(rp));
         if (priv(rp)->s_flags & BILLABLE)
             get_cpulocal_var(bill_ptr) = rp;
         return rp;
     } else {
-        // Fallback final para o processo ocioso
-        rp = get_cpulocal_var(idle_proc);
+        rp = &get_cpulocal_var(idle_proc); 
         if (rp != NULL && proc_is_runnable(rp)) {
             return rp;
         } else {
@@ -1850,6 +1847,7 @@ static struct proc * pick_proc(void) {
         }
     }
 }
+
 /*===========================================================================*
  *				endpoint_lookup				     *
  *===========================================================================*/
